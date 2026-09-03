@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'DM Sans', sans-serif; }
@@ -577,13 +578,58 @@
       downloadTxt(txt, `relatorio_${rec.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`);
     };
 
-    // Download de relatório GERAL (todos os colaboradores)
+    // Download de relatório GERAL em Excel
     window.downloadRelatorioGeral = async () => {
       if (!allData.length) { alert('Nenhum colaborador cadastrado.'); return; }
-      const separador = '\n' + '#'.repeat(60) + '\n\n';
-      const partes = await Promise.all(allData.map(rec => buildRelatorioText(rec)));
-      const txt = `RELATÓRIO GERAL DE DESEMPENHO DA EQUIPE\nGerado em: ${new Date().toLocaleString('pt-BR')}\nTotal de colaboradores: ${allData.length}\n\n` + partes.join(separador);
-      downloadTxt(txt, `relatorio_geral_${new Date().toISOString().split('T')[0]}.txt`);
+
+      // Busca feedbacks de todos os colaboradores
+      const ids = allData.map(r => r.__backendId);
+      const { data: todosFbs } = await sb.from('feedbacks').select('*').in('colaborador_id', ids).order('data', { ascending: false });
+
+      // Aba 1: Resumo geral
+      const resumo = allData.map(rec => {
+        const media = calcMedia(rec.checkin_score, rec.evaluation_score, rec.avaliacao_score, rec.goal_progress);
+        const status = getStatus(media);
+        return {
+          'Nome':           rec.name,
+          'Matrícula':      rec.matricula || '',
+          'Cargo':          rec.role || '',
+          'Área':           rec.area || '',
+          'Gestor':         rec.manager || '',
+          'Relacionamento': rec.checkin_score,
+          'Potencial':      rec.evaluation_score,
+          'Avaliação':      rec.avaliacao_score,
+          'Metas (%)':      rec.goal_progress,
+          'Média Geral':    parseFloat(media.toFixed(2)),
+          'Status':         statusLabel(status),
+          'Feedbacks':      rec.feedback_count,
+        };
+      });
+
+      // Aba 2: Feedbacks detalhados
+      const feedbacksSheet = (todosFbs || []).map(fb => {
+        const colab = allData.find(r => r.__backendId === fb.colaborador_id);
+        return {
+          'Colaborador': colab?.name || '',
+          'Data':        new Date(fb.data).toLocaleDateString('pt-BR'),
+          'Tipo':        fb.tipo,
+          'Descrição':   fb.descricao,
+        };
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws1 = XLSX.utils.json_to_sheet(resumo);
+      const ws2 = XLSX.utils.json_to_sheet(feedbacksSheet.length ? feedbacksSheet : [{ 'Info': 'Nenhum feedback registrado.' }]);
+
+      // Largura das colunas
+      ws1['!cols'] = [20,12,20,15,20,14,12,12,10,12,18,10].map(w => ({ wch: w }));
+      ws2['!cols'] = [20,12,14,50].map(w => ({ wch: w }));
+
+      XLSX.utils.book_append_sheet(wb, ws1, 'Desempenho');
+      XLSX.utils.book_append_sheet(wb, ws2, 'Feedbacks');
+
+      const data = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `relatorio_geral_${data}.xlsx`);
     };
 
     function downloadTxt(txt, filename) {
