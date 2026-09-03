@@ -23,7 +23,7 @@
 </head>
 <body class="min-h-screen">
 
-  <!-- Tela de carregamento -->
+  <!-- Carregamento -->
   <div id="loading" class="min-h-screen flex items-center justify-center">
     <div class="text-center">
       <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
@@ -31,7 +31,7 @@
     </div>
   </div>
 
-  <!-- App principal (oculto até autenticar) -->
+  <!-- App -->
   <div id="app">
     <header class="border-b border-gray-200 bg-white">
       <div class="max-w-7xl mx-auto px-4 py-5 flex items-center justify-between">
@@ -44,6 +44,9 @@
             <p id="user-name" class="text-sm font-semibold text-gray-800"></p>
             <p id="user-role" class="text-xs text-gray-500">Gestor</p>
           </div>
+          <button onclick="downloadRelatorioGeral()" class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-green-600 text-white hover:bg-green-700">
+            <i data-lucide="file-down" style="width:18px;height:18px"></i> Relatório Geral
+          </button>
           <button onclick="openModal()" class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-indigo-600 text-white hover:bg-indigo-700">
             <i data-lucide="plus" style="width:18px;height:18px"></i> Novo Colaborador
           </button>
@@ -55,6 +58,7 @@
     </header>
 
     <main class="max-w-7xl mx-auto px-4 py-6">
+      <!-- Cards de resumo -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div class="bg-white rounded-xl p-4 border border-gray-100">
           <p class="text-sm text-gray-500">Total</p>
@@ -74,8 +78,9 @@
         </div>
       </div>
 
-      <div class="mb-4 flex gap-3 items-end">
-        <div class="flex-1">
+      <!-- Filtros -->
+      <div class="mb-4 flex gap-3 items-end flex-wrap">
+        <div class="flex-1 min-w-[140px]">
           <label class="block text-sm font-medium text-gray-700 mb-2">Filtrar por Status</label>
           <select id="filter-status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
             <option value="">Todos</option>
@@ -84,13 +89,14 @@
             <option value="vermelho">🔴 Risco</option>
           </select>
         </div>
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Filtro</label>
+        <div class="flex-1 min-w-[140px]">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
           <input id="filter-input" type="text" placeholder="Nome ou Matrícula" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
         </div>
-        <button onclick="resetFilters()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium text-sm">Limpar Filtros</button>
+        <button onclick="resetFilters()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium text-sm">Limpar</button>
       </div>
 
+      <!-- Tabela -->
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
@@ -100,9 +106,9 @@
                 <th class="text-left px-4 py-3 font-semibold text-gray-600">Colaborador</th>
                 <th class="text-left px-4 py-3 font-semibold text-gray-600">Matrícula</th>
                 <th class="text-left px-4 py-3 font-semibold text-gray-600">Área</th>
-                <th class="text-center px-4 py-3 font-semibold text-gray-600">Check-in</th>
+                <th class="text-center px-4 py-3 font-semibold text-gray-600">Relacionamento</th>
                 <th class="text-center px-4 py-3 font-semibold text-gray-600">Avaliação</th>
-                <th class="text-center px-4 py-3 font-semibold text-gray-600">Score</th>
+                <th class="text-center px-4 py-3 font-semibold text-gray-600">Potencial</th>
                 <th class="text-center px-4 py-3 font-semibold text-gray-600">Metas</th>
                 <th class="text-center px-4 py-3 font-semibold text-gray-600">Status</th>
                 <th class="text-center px-4 py-3 font-semibold text-gray-600">Ações</th>
@@ -111,14 +117,14 @@
             <tbody id="table-body"></tbody>
           </table>
         </div>
-        <div id="empty-state" class="py-12 text-center">
+        <div id="empty-state" class="py-12 text-center hidden">
           <p class="text-gray-400">Nenhum colaborador cadastrado ainda.</p>
         </div>
       </div>
     </main>
   </div>
 
-  <!-- Modal colaborador -->
+  <!-- Modal colaborador (novo / editar) -->
   <div id="modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden p-4">
     <div class="bg-white rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
       <h2 id="modal-title" class="font-bold text-lg mb-4">Novo Colaborador</h2>
@@ -129,13 +135,20 @@
         <div><label class="block text-sm font-medium text-gray-700 mb-1">Área</label><input id="f-area" type="text" required class="w-full border rounded-lg px-3 py-2 text-sm"></div>
         <div><label class="block text-sm font-medium text-gray-700 mb-1">Gestor</label><input id="f-manager" type="text" required class="w-full border rounded-lg px-3 py-2 text-sm"></div>
         <div class="grid grid-cols-2 gap-3">
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Nota Check-in (0-5)</label><input id="f-checkin" type="number" min="0" max="5" step="0.1" required class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Nota Avaliação (0-5)</label><input id="f-eval" type="number" min="0" max="5" step="0.1" required class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Relacionamento (1–10)</label>
+            <input id="f-checkin" type="number" min="1" max="10" step="0.1" required class="w-full border rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Avaliação (1–10)</label>
+            <input id="f-eval" type="number" min="1" max="10" step="0.1" required class="w-full border rounded-lg px-3 py-2 text-sm">
+          </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Metas (%)</label><input id="f-goals" type="number" min="0" max="100" required class="w-full border rounded-lg px-3 py-2 text-sm"></div>
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Feedbacks</label><input id="f-feedback" type="number" min="0" required class="w-full border rounded-lg px-3 py-2 text-sm"></div>
         </div>
+        <div id="form-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
         <div class="flex gap-2 pt-3">
           <button type="submit" class="flex-1 bg-indigo-600 text-white rounded-lg py-2 font-medium hover:bg-indigo-700">Salvar</button>
           <button type="button" onclick="closeModal()" class="flex-1 bg-gray-100 text-gray-700 rounded-lg py-2 font-medium">Cancelar</button>
@@ -188,14 +201,14 @@
     let feedbackTarget = null;
     let gestorId = null;
 
-    // ── Auth ─────────────────────────────────────────────────
+    // ── Auth ──────────────────────────────────────────────────
     async function init() {
       const { data: { session } } = await sb.auth.getSession();
       if (!session) { window.location.replace('/login.html'); return; }
 
       const { data: usuario } = await sb.from('usuarios').select('id,nome,perfil,ativo').eq('id', session.user.id).single();
       if (!usuario || !usuario.ativo) { await sb.auth.signOut(); window.location.replace('/login.html'); return; }
-      if (usuario.perfil !== 'gestor') { window.location.replace('/admin/'); return; }
+      if (usuario.perfil !== 'gestor') { window.location.replace('/admin/index.html'); return; }
 
       document.getElementById('user-name').textContent = usuario.nome;
 
@@ -218,8 +231,10 @@
       const { data } = await sb.from('colaboradores').select('*').eq('gestor_id', gestorId).order('created_at', { ascending: false });
       allData = (data || []).map(r => ({
         __backendId: r.id, name: r.nome, matricula: r.matricula, role: r.cargo,
-        area: r.area, manager: r.manager, checkin_score: Number(r.checkin_score)||0,
-        evaluation_score: Number(r.evaluation_score)||0, goal_progress: Number(r.goal_progress)||0,
+        area: r.area, manager: r.manager,
+        checkin_score: Number(r.checkin_score)||0,
+        evaluation_score: Number(r.evaluation_score)||0,
+        goal_progress: Number(r.goal_progress)||0,
         feedback_count: Number(r.feedback_count)||0,
         status: r.status, last_checkin_date: r.last_checkin_date,
       }));
@@ -228,16 +243,19 @@
     }
 
     function toBackend(obj) {
-      return { gestor_id: gestorId, nome: obj.name, matricula: obj.matricula, cargo: obj.role,
+      return {
+        gestor_id: gestorId, nome: obj.name, matricula: obj.matricula, cargo: obj.role,
         area: obj.area, manager: obj.manager, checkin_score: obj.checkin_score,
         evaluation_score: obj.evaluation_score, goal_progress: obj.goal_progress,
         feedback_count: obj.feedback_count,
-        status: obj.status, last_checkin_date: obj.last_checkin_date||new Date().toISOString() };
+        status: obj.status, last_checkin_date: obj.last_checkin_date || new Date().toISOString()
+      };
     }
 
     // ── Helpers ───────────────────────────────────────────────
-    function calcScore(c, e) { return (c * 0.6) + (e * 0.4); }
-    function getStatus(s)    { return s >= 4 ? 'verde' : s >= 2.5 ? 'amarelo' : 'vermelho'; }
+    // Potencial = média ponderada (escala 1-10)
+    function calcPotencial(rel, aval) { return (rel * 0.5) + (aval * 0.5); }
+    function getStatus(p)    { return p >= 8 ? 'verde' : p >= 5 ? 'amarelo' : 'vermelho'; }
     function statusLabel(s)  { return s==='verde'?'🟢 Destaque':s==='amarelo'?'🟡 Desenvolvimento':'🔴 Risco'; }
     function typeIcon(t)     { return t==='positivo'?'👍':t==='construtivo'?'💡':'⚡'; }
 
@@ -249,25 +267,36 @@
       empty.classList.add('hidden');
       tbody.innerHTML = '';
       data.forEach(item => {
-        const score = calcScore(item.checkin_score, item.evaluation_score);
-        const status = getStatus(score);
+        const pot = calcPotencial(item.checkin_score, item.evaluation_score);
+        const status = getStatus(pot);
         const row = document.createElement('tr');
         row.className = 'border-b hover:bg-gray-50';
         row.dataset.id = item.__backendId;
         row.innerHTML = `
-          <td class="px-3 py-3 text-center"><button onclick="togglePanel('${item.__backendId}',event)" class="text-gray-400 hover:text-indigo-600"><i data-lucide="chevron-right" style="width:16px;height:16px" class="transition-transform ei-${item.__backendId}"></i></button></td>
-          <td class="px-4 py-3"><div class="font-medium text-gray-900">${item.name}</div><div class="text-xs text-gray-500">${item.role}</div></td>
+          <td class="px-3 py-3 text-center">
+            <button onclick="togglePanel('${item.__backendId}',event)" class="text-gray-400 hover:text-indigo-600">
+              <i data-lucide="chevron-right" style="width:16px;height:16px" class="transition-transform ei-${item.__backendId}"></i>
+            </button>
+          </td>
+          <td class="px-4 py-3">
+            <div class="font-medium text-gray-900">${item.name}</div>
+            <div class="text-xs text-gray-500">${item.role}</div>
+          </td>
           <td class="px-4 py-3 text-gray-600 text-sm">${item.matricula||'-'}</td>
           <td class="px-4 py-3 text-gray-600">${item.area||'-'}</td>
-          <td class="px-4 py-3 text-center font-medium">${item.checkin_score.toFixed(1)}</td>
-          <td class="px-4 py-3 text-center font-medium">${item.evaluation_score.toFixed(1)}</td>
-          <td class="px-4 py-3 text-center font-bold">${score.toFixed(1)}</td>
-          <td class="px-4 py-3 text-center"><div class="w-full bg-gray-200 rounded-full h-2"><div class="h-2 rounded-full dot-${status}" style="width:${item.goal_progress}%"></div></div><span class="text-xs">${item.goal_progress}%</span></td>
+          <td class="px-4 py-3 text-center font-medium">${item.checkin_score.toFixed(1)}<span class="text-xs text-gray-400">/10</span></td>
+          <td class="px-4 py-3 text-center font-medium">${item.evaluation_score.toFixed(1)}<span class="text-xs text-gray-400">/10</span></td>
+          <td class="px-4 py-3 text-center font-bold text-indigo-700">${pot.toFixed(1)}<span class="text-xs text-gray-400 font-normal">/10</span></td>
+          <td class="px-4 py-3 text-center">
+            <div class="w-full bg-gray-200 rounded-full h-2 mb-1"><div class="h-2 rounded-full dot-${status}" style="width:${item.goal_progress}%"></div></div>
+            <span class="text-xs">${item.goal_progress}%</span>
+          </td>
           <td class="px-4 py-3 text-center"><span class="status-${status} px-2 py-1 rounded-full text-xs font-semibold">${statusLabel(status)}</span></td>
           <td class="px-4 py-3 text-center whitespace-nowrap">
-            <button onclick="editRecord('${item.__backendId}')" class="text-indigo-600 hover:text-indigo-800 mr-2"><i data-lucide="edit" style="width:16px;height:16px"></i></button>
-            <button onclick="deleteRecord('${item.__backendId}')" class="text-red-500 hover:text-red-700 mr-2"><i data-lucide="trash-2" style="width:16px;height:16px"></i></button>
-            <button onclick="generateReport('${item.__backendId}')" class="text-blue-600 hover:text-blue-800"><i data-lucide="send" style="width:16px;height:16px"></i></button>
+            <button onclick="editRecord('${item.__backendId}')" title="Editar" class="text-indigo-600 hover:text-indigo-800 mr-2"><i data-lucide="edit" style="width:16px;height:16px"></i></button>
+            <button onclick="deleteRecord('${item.__backendId}')" title="Excluir" class="text-red-500 hover:text-red-700 mr-2"><i data-lucide="trash-2" style="width:16px;height:16px"></i></button>
+            <button onclick="enviarRelatorio('${item.__backendId}')" title="Copiar relatório" class="text-blue-600 hover:text-blue-800 mr-2"><i data-lucide="send" style="width:16px;height:16px"></i></button>
+            <button onclick="generateReport('${item.__backendId}')" title="Baixar relatório individual" class="text-green-600 hover:text-green-800"><i data-lucide="download" style="width:16px;height:16px"></i></button>
           </td>`;
         tbody.appendChild(row);
 
@@ -277,8 +306,10 @@
         panel.innerHTML = `<td colspan="10" class="px-4 py-4 bg-gray-50 border-b">
           <div class="max-w-2xl">
             <div class="flex items-center justify-between mb-3">
-              <h4 class="font-semibold text-gray-700 text-sm">Feedbacks</h4>
-              <button onclick="openFeedbackModal('${item.__backendId}')" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg flex items-center gap-1"><i data-lucide="plus" style="width:12px;height:12px"></i> Novo</button>
+              <h4 class="font-semibold text-gray-700 text-sm">Feedbacks — ${item.name}</h4>
+              <button onclick="openFeedbackModal('${item.__backendId}')" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg flex items-center gap-1">
+                <i data-lucide="plus" style="width:12px;height:12px"></i> Novo
+              </button>
             </div>
             <div id="fb-list-${item.__backendId}" class="text-gray-400 text-xs italic">Carregando...</div>
           </div></td>`;
@@ -292,11 +323,19 @@
       const container = document.getElementById(`fb-list-${colaboradorId}`);
       if (!container) return;
       if (!fbs?.length) { container.innerHTML = '<p class="text-gray-400 text-xs italic">Nenhum feedback registrado.</p>'; return; }
-      container.innerHTML = `<div class="space-y-2 max-h-48 overflow-y-auto">${fbs.map(fb=>`
+      container.innerHTML = `<div class="space-y-2 max-h-48 overflow-y-auto">${fbs.map(fb => `
         <div class="bg-white border rounded-lg p-3 flex gap-3 items-start">
           <span class="text-lg">${typeIcon(fb.tipo)}</span>
-          <div class="flex-1"><div class="flex items-center gap-2"><span class="text-xs font-semibold text-gray-500">${new Date(fb.data).toLocaleDateString('pt-BR')}</span><span class="text-xs px-1.5 py-0.5 rounded ${fb.tipo==='positivo'?'bg-green-100 text-green-700':fb.tipo==='construtivo'?'bg-blue-100 text-blue-700':'bg-orange-100 text-orange-700'}">${fb.tipo}</span></div><p class="text-sm text-gray-700 mt-1">${fb.descricao}</p></div>
-          <button onclick="removeFeedback('${fb.id}','${colaboradorId}')" class="text-gray-400 hover:text-red-500"><i data-lucide="x" style="width:14px;height:14px"></i></button>
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-gray-500">${new Date(fb.data).toLocaleDateString('pt-BR')}</span>
+              <span class="text-xs px-1.5 py-0.5 rounded ${fb.tipo==='positivo'?'bg-green-100 text-green-700':fb.tipo==='construtivo'?'bg-blue-100 text-blue-700':'bg-orange-100 text-orange-700'}">${fb.tipo}</span>
+            </div>
+            <p class="text-sm text-gray-700 mt-1">${fb.descricao}</p>
+          </div>
+          <button onclick="removeFeedback('${fb.id}','${colaboradorId}')" class="text-gray-400 hover:text-red-500">
+            <i data-lucide="x" style="width:14px;height:14px"></i>
+          </button>
         </div>`).join('')}</div>`;
       lucide.createIcons();
     }
@@ -313,12 +352,15 @@
     };
 
     function updateCounts(data) {
-      let v=0,a=0,r=0;
-      data.forEach(item => { const s=getStatus(calcScore(item.checkin_score,item.evaluation_score)); if(s==='verde')v++;else if(s==='amarelo')a++;else r++; });
-      document.getElementById('count-total').textContent   = data.length;
-      document.getElementById('count-verde').textContent   = v;
-      document.getElementById('count-amarelo').textContent = a;
-      document.getElementById('count-vermelho').textContent= r;
+      let v=0, a=0, r=0;
+      data.forEach(item => {
+        const s = getStatus(calcPotencial(item.checkin_score, item.evaluation_score));
+        if (s==='verde') v++; else if (s==='amarelo') a++; else r++;
+      });
+      document.getElementById('count-total').textContent    = data.length;
+      document.getElementById('count-verde').textContent    = v;
+      document.getElementById('count-amarelo').textContent  = a;
+      document.getElementById('count-vermelho').textContent = r;
     }
 
     // ── Filtros ───────────────────────────────────────────────
@@ -334,69 +376,122 @@
         if (row.classList.contains('feedback-panel')) return;
         const item = allData.find(r => r.__backendId === row.dataset.id);
         if (!item) return;
-        const ok = (!sf || getStatus(calcScore(item.checkin_score,item.evaluation_score))===sf) && (!tf||item.name.toLowerCase().includes(tf)||(item.matricula||'').toLowerCase().includes(tf));
+        const ok = (!sf || getStatus(calcPotencial(item.checkin_score, item.evaluation_score)) === sf)
+                && (!tf || item.name.toLowerCase().includes(tf) || (item.matricula||'').toLowerCase().includes(tf));
         row.style.display = ok ? '' : 'none';
         const p = document.getElementById(`panel-${item.__backendId}`);
         if (p) p.style.display = ok ? '' : 'none';
       });
     }
 
-    window.resetFilters = () => { document.getElementById('filter-status').value=''; document.getElementById('filter-input').value=''; applyFilters(); };
+    window.resetFilters = () => {
+      document.getElementById('filter-status').value = '';
+      document.getElementById('filter-input').value = '';
+      applyFilters();
+    };
 
-    // ── Modal Colaborador ────────────────────────────────────
+    // ── Modal Colaborador ─────────────────────────────────────
     window.openModal = (record) => {
       editingRecord = record || null;
       document.getElementById('modal-title').textContent = record ? 'Editar Colaborador' : 'Novo Colaborador';
+      document.getElementById('form-error').classList.add('hidden');
       if (record) {
-        document.getElementById('f-name').value     = record.name||'';
-        document.getElementById('f-matricula').value= record.matricula||'';
-        document.getElementById('f-role').value     = record.role||'';
-        document.getElementById('f-area').value     = record.area||'';
-        document.getElementById('f-manager').value  = record.manager||'';
-        document.getElementById('f-checkin').value  = record.checkin_score||0;
-        document.getElementById('f-eval').value     = record.evaluation_score||0;
-        document.getElementById('f-goals').value    = record.goal_progress||0;
-        document.getElementById('f-feedback').value = record.feedback_count||0;
-      } else { document.getElementById('collab-form').reset(); }
+        document.getElementById('f-name').value      = record.name || '';
+        document.getElementById('f-matricula').value = record.matricula || '';
+        document.getElementById('f-role').value      = record.role || '';
+        document.getElementById('f-area').value      = record.area || '';
+        document.getElementById('f-manager').value   = record.manager || '';
+        document.getElementById('f-checkin').value   = record.checkin_score || '';
+        document.getElementById('f-eval').value      = record.evaluation_score || '';
+        document.getElementById('f-goals').value     = record.goal_progress || 0;
+        document.getElementById('f-feedback').value  = record.feedback_count || 0;
+      } else {
+        document.getElementById('collab-form').reset();
+      }
       document.getElementById('modal').classList.remove('hidden');
     };
-    window.closeModal = () => { document.getElementById('modal').classList.add('hidden'); editingRecord=null; };
+
+    window.closeModal = () => {
+      document.getElementById('modal').classList.add('hidden');
+      editingRecord = null;
+    };
 
     document.getElementById('collab-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const errEl = document.getElementById('form-error');
+      errEl.classList.add('hidden');
+
       const ci = parseFloat(document.getElementById('f-checkin').value);
       const ev = parseFloat(document.getElementById('f-eval').value);
-      const obj = { name: document.getElementById('f-name').value, matricula: document.getElementById('f-matricula').value,
-        role: document.getElementById('f-role').value, area: document.getElementById('f-area').value,
-        manager: document.getElementById('f-manager').value, checkin_score: ci, evaluation_score: ev,
-        goal_progress: parseInt(document.getElementById('f-goals').value), feedback_count: parseInt(document.getElementById('f-feedback').value)||0,
-        last_checkin_date: new Date().toISOString(), status: getStatus(calcScore(ci,ev)) };
+
+      if (ci < 1 || ci > 10 || ev < 1 || ev > 10) {
+        errEl.textContent = 'Relacionamento e Avaliação devem ser entre 1 e 10.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      const obj = {
+        name: document.getElementById('f-name').value.trim(),
+        matricula: document.getElementById('f-matricula').value.trim(),
+        role: document.getElementById('f-role').value.trim(),
+        area: document.getElementById('f-area').value.trim(),
+        manager: document.getElementById('f-manager').value.trim(),
+        checkin_score: ci,
+        evaluation_score: ev,
+        goal_progress: parseInt(document.getElementById('f-goals').value) || 0,
+        feedback_count: parseInt(document.getElementById('f-feedback').value) || 0,
+        last_checkin_date: new Date().toISOString(),
+        status: getStatus(calcPotencial(ci, ev)),
+      };
+
       const btn = e.target.querySelector('[type=submit]');
-      btn.disabled=true; btn.textContent='Salvando...';
-      if (editingRecord) { await sb.from('colaboradores').update(toBackend(obj)).eq('id',editingRecord.__backendId).eq('gestor_id',gestorId); }
-      else               { await sb.from('colaboradores').insert(toBackend(obj)); }
-      btn.disabled=false; btn.textContent='Salvar';
-      window.closeModal(); await loadData();
+      btn.disabled = true; btn.textContent = 'Salvando...';
+
+      let error;
+      if (editingRecord) {
+        ({ error } = await sb.from('colaboradores').update(toBackend(obj)).eq('id', editingRecord.__backendId).eq('gestor_id', gestorId));
+      } else {
+        ({ error } = await sb.from('colaboradores').insert(toBackend(obj)));
+      }
+
+      btn.disabled = false; btn.textContent = 'Salvar';
+
+      if (error) {
+        errEl.textContent = 'Erro ao salvar: ' + error.message;
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      window.closeModal();
+      await loadData();
     });
 
-    window.editRecord   = (id) => { const r=allData.find(x=>x.__backendId===id); if(r) window.openModal(r); };
-    window.deleteRecord = (id) => { deletingRecord=allData.find(x=>x.__backendId===id); document.getElementById('delete-modal').classList.remove('hidden'); };
-    window.closeDeleteModal = () => { document.getElementById('delete-modal').classList.add('hidden'); deletingRecord=null; };
-    window.confirmDelete    = async () => { if(!deletingRecord)return; await sb.from('colaboradores').delete().eq('id',deletingRecord.__backendId).eq('gestor_id',gestorId); window.closeDeleteModal(); await loadData(); };
+    window.editRecord   = (id) => { const r = allData.find(x => x.__backendId === id); if (r) window.openModal(r); };
+    window.deleteRecord = (id) => { deletingRecord = allData.find(x => x.__backendId === id); document.getElementById('delete-modal').classList.remove('hidden'); };
+    window.closeDeleteModal = () => { document.getElementById('delete-modal').classList.add('hidden'); deletingRecord = null; };
+    window.confirmDelete = async () => {
+      if (!deletingRecord) return;
+      await sb.from('feedbacks').delete().eq('colaborador_id', deletingRecord.__backendId);
+      await sb.from('colaboradores').delete().eq('id', deletingRecord.__backendId).eq('gestor_id', gestorId);
+      window.closeDeleteModal();
+      await loadData();
+    };
 
     // ── Modal Feedback ────────────────────────────────────────
     window.openFeedbackModal = (id) => {
-      feedbackTarget = allData.find(r=>r.__backendId===id);
+      feedbackTarget = allData.find(r => r.__backendId === id);
       document.getElementById('feedback-form').reset();
       document.getElementById('fb-date').value = new Date().toISOString().split('T')[0];
       document.getElementById('feedback-modal').classList.remove('hidden');
     };
-    window.closeFeedbackModal = () => { document.getElementById('feedback-modal').classList.add('hidden'); feedbackTarget=null; };
+    window.closeFeedbackModal = () => { document.getElementById('feedback-modal').classList.add('hidden'); feedbackTarget = null; };
 
     document.getElementById('feedback-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!feedbackTarget) return;
-      const btn=e.target.querySelector('[type=submit]'); btn.disabled=true; btn.textContent='Salvando...';
+      const btn = e.target.querySelector('[type=submit]');
+      btn.disabled = true; btn.textContent = 'Salvando...';
+
       await sb.from('feedbacks').insert({
         colaborador_id: feedbackTarget.__backendId,
         gestor_id: gestorId,
@@ -404,31 +499,92 @@
         descricao: document.getElementById('fb-desc').value,
         data: document.getElementById('fb-date').value,
       });
+
       const { count } = await sb.from('feedbacks').select('*', { count: 'exact', head: true }).eq('colaborador_id', feedbackTarget.__backendId);
-      await sb.from('colaboradores').update({ feedback_count: count||0 }).eq('id', feedbackTarget.__backendId);
-      btn.disabled=false; btn.textContent='Adicionar';
+      await sb.from('colaboradores').update({ feedback_count: count || 0 }).eq('id', feedbackTarget.__backendId);
+
+      btn.disabled = false; btn.textContent = 'Adicionar';
+      const targetId = feedbackTarget.__backendId;
       window.closeFeedbackModal();
       await loadData();
-      await loadFeedbacksForPanel(feedbackTarget.__backendId);
+      await loadFeedbacksForPanel(targetId);
     });
 
     window.removeFeedback = async (feedbackId, colaboradorId) => {
       await sb.from('feedbacks').delete().eq('id', feedbackId);
       const { count } = await sb.from('feedbacks').select('*', { count: 'exact', head: true }).eq('colaborador_id', colaboradorId);
-      await sb.from('colaboradores').update({ feedback_count: count||0 }).eq('id', colaboradorId);
+      await sb.from('colaboradores').update({ feedback_count: count || 0 }).eq('id', colaboradorId);
       await loadFeedbacksForPanel(colaboradorId);
     };
 
-    // ── Relatório ────────────────────────────────────────────
-    window.generateReport = async (id) => {
-      const rec=allData.find(r=>r.__backendId===id); if(!rec)return;
-      const { data: fbs } = await sb.from('feedbacks').select('*').eq('colaborador_id', id).order('data', { ascending: false });
-      const score=calcScore(rec.checkin_score,rec.evaluation_score); const status=getStatus(score);
-      let r=`RELATÓRIO DE DESEMPENHO\n${'='.repeat(50)}\n\nNome: ${rec.name}\nMatrícula: ${rec.matricula||'N/A'}\nCargo: ${rec.role}\nÁrea: ${rec.area}\nGestor: ${rec.manager}\n\nCheck-in: ${rec.checkin_score.toFixed(1)}/5.0\nAvaliação: ${rec.evaluation_score.toFixed(1)}/5.0\nScore: ${score.toFixed(1)}/5.0\nStatus: ${statusLabel(status)}\nMetas: ${rec.goal_progress}%\n\nFEEDBACKS\n`;
-      if(!fbs?.length) r+='Nenhum feedback.\n'; else fbs.forEach((f,i)=>{ r+=`\n${i+1}. ${typeIcon(f.tipo)} ${f.tipo.toUpperCase()}\nData: ${new Date(f.data).toLocaleDateString('pt-BR')}\n${f.descricao}\n`; });
-      r+=`\n${'='.repeat(50)}\nGerado em: ${new Date().toLocaleDateString('pt-BR')}`;
-      navigator.clipboard.writeText(r).then(()=>alert('Relatório copiado!')).catch(()=>alert(r));
+    // ── Monta texto do relatório de um colaborador ────────────
+    async function buildRelatorioText(rec) {
+      const { data: fbs } = await sb.from('feedbacks').select('*').eq('colaborador_id', rec.__backendId).order('data', { ascending: false });
+      const pot = calcPotencial(rec.checkin_score, rec.evaluation_score);
+      const status = getStatus(pot);
+      const linha = '='.repeat(50);
+      let txt = `RELATÓRIO DE DESEMPENHO\n${linha}\n\n`;
+      txt += `Nome:           ${rec.name}\n`;
+      txt += `Matrícula:      ${rec.matricula || 'N/A'}\n`;
+      txt += `Cargo:          ${rec.role}\n`;
+      txt += `Área:           ${rec.area}\n`;
+      txt += `Gestor:         ${rec.manager}\n\n`;
+      txt += `${linha}\nINDICADORES\n${linha}\n\n`;
+      txt += `Relacionamento: ${rec.checkin_score.toFixed(1)} / 10\n`;
+      txt += `Avaliação:      ${rec.evaluation_score.toFixed(1)} / 10\n`;
+      txt += `Potencial:      ${pot.toFixed(1)} / 10\n`;
+      txt += `Status:         ${statusLabel(status)}\n`;
+      txt += `Metas:          ${rec.goal_progress}%\n`;
+      txt += `Feedbacks:      ${rec.feedback_count}\n\n`;
+      txt += `${linha}\nFEEDBACKS\n${linha}\n`;
+      if (!fbs?.length) {
+        txt += '\nNenhum feedback registrado.\n';
+      } else {
+        fbs.forEach((f, i) => {
+          txt += `\n${i+1}. ${typeIcon(f.tipo)} ${f.tipo.toUpperCase()}\n`;
+          txt += `   Data: ${new Date(f.data).toLocaleDateString('pt-BR')}\n`;
+          txt += `   ${f.descricao}\n`;
+        });
+      }
+      txt += `\n${linha}\nGerado em: ${new Date().toLocaleString('pt-BR')}\n`;
+      return txt;
+    }
+
+    // Copia relatório individual para área de transferência
+    window.enviarRelatorio = async (id) => {
+      const rec = allData.find(r => r.__backendId === id);
+      if (!rec) return;
+      const txt = await buildRelatorioText(rec);
+      navigator.clipboard.writeText(txt)
+        .then(() => alert('Relatório copiado para a área de transferência!'))
+        .catch(() => alert(txt));
     };
+
+    // Download de relatório de UM colaborador
+    window.generateReport = async (id) => {
+      const rec = allData.find(r => r.__backendId === id);
+      if (!rec) return;
+      const txt = await buildRelatorioText(rec);
+      downloadTxt(txt, `relatorio_${rec.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`);
+    };
+
+    // Download de relatório GERAL (todos os colaboradores)
+    window.downloadRelatorioGeral = async () => {
+      if (!allData.length) { alert('Nenhum colaborador cadastrado.'); return; }
+      const separador = '\n' + '#'.repeat(60) + '\n\n';
+      const partes = await Promise.all(allData.map(rec => buildRelatorioText(rec)));
+      const txt = `RELATÓRIO GERAL DE DESEMPENHO DA EQUIPE\nGerado em: ${new Date().toLocaleString('pt-BR')}\nTotal de colaboradores: ${allData.length}\n\n` + partes.join(separador);
+      downloadTxt(txt, `relatorio_geral_${new Date().toISOString().split('T')[0]}.txt`);
+    };
+
+    function downloadTxt(txt, filename) {
+      const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
 
     init();
   </script>
