@@ -470,7 +470,7 @@
         const { count } = await sb.from('colaboradores').select('id', { count:'exact', head:true }).eq('gestor_id', g.id);
         const tr = document.createElement('tr');
         tr.className = 'border-b hover:bg-gray-50';
-        tr.innerHTML = `<td class="px-4 py-3 font-medium">${g.nome}</td><td class="px-4 py-3 text-gray-500">${g.usuarios?.email||'–'}</td><td class="px-4 py-3 text-gray-500">${g.area}</td><td class="px-4 py-3 text-center">${count||0}</td><td class="px-4 py-3 text-center"><span class="${g.ativo?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'} px-2 py-1 rounded-full text-xs font-semibold">${g.ativo?'Ativo':'Inativo'}</span></td><td class="px-4 py-3 text-center"><button onclick="toggleGestor('${g.id}',${g.ativo})" class="text-xs ${g.ativo?'text-red-500 hover:text-red-700':'text-green-600 hover:text-green-800'} font-medium">${g.ativo?'Desativar':'Reativar'}</button></td>`;
+        tr.innerHTML = `<td class="px-4 py-3 font-medium">${g.nome}</td><td class="px-4 py-3 text-gray-500">${g.usuarios?.email||'–'}</td><td class="px-4 py-3 text-gray-500">${g.area}</td><td class="px-4 py-3 text-center">${count||0}</td><td class="px-4 py-3 text-center"><span class="${g.ativo?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'} px-2 py-1 rounded-full text-xs font-semibold">${g.ativo?'Ativo':'Inativo'}</span></td><td class="px-4 py-3 text-center flex items-center justify-center gap-3"><button onclick="toggleGestor('${g.id}',${g.ativo})" class="text-xs ${g.ativo?'text-red-500 hover:text-red-700':'text-green-600 hover:text-green-800'} font-medium">${g.ativo?'Desativar':'Reativar'}</button><button onclick="excluirGestor('${g.id}','${g.nome.replace(/'/g,"\\'")}',${count||0})" class="text-xs text-gray-400 hover:text-red-600 font-medium" title="Excluir gestor">🗑️</button></td>`;
         tbody.appendChild(tr);
       }
       if (!data?.length) tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Nenhum gestor cadastrado.</td></tr>';
@@ -480,6 +480,30 @@
       await sb.from('gestores').update({ ativo: !ativo }).eq('id', id);
       const { data: g } = await sb.from('gestores').select('usuario_id').eq('id', id).single();
       if (g) await sb.from('usuarios').update({ ativo: !ativo }).eq('id', g.usuario_id);
+      loadGestores();
+    };
+
+    window.excluirGestor = async (id, nome, totalColabs) => {
+      const aviso = totalColabs > 0
+        ? `⚠️ Este gestor possui ${totalColabs} colaborador(es) vinculado(s). Ao excluir, eles ficarão sem gestor.\n\n`
+        : '';
+      if (!confirm(`${aviso}Excluir o gestor "${nome}"? Esta ação não pode ser desfeita.`)) return;
+
+      // Busca usuario_id antes de deletar
+      const { data: g } = await sb.from('gestores').select('usuario_id').eq('id', id).single();
+
+      // Desvincula colaboradores
+      await sb.from('colaboradores').update({ gestor_id: null }).eq('gestor_id', id);
+
+      // Remove gestor da tabela gestores
+      await sb.from('gestores').delete().eq('id', id);
+
+      // Remove usuário do auth e da tabela usuarios (se existir)
+      if (g?.usuario_id) {
+        await sb.from('usuarios').delete().eq('id', g.usuario_id);
+        await sb.functions.invoke('delete-user', { body: { user_id: g.usuario_id } }).catch(()=>{});
+      }
+
       loadGestores();
     };
 
