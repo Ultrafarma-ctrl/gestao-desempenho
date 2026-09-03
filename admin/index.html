@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'DM Sans', sans-serif; }
@@ -108,7 +109,16 @@
 
       <!-- Equipes -->
       <div id="tab-colaboradores" class="tab-panel">
-        <h2 class="text-xl font-bold text-gray-900 mb-4">Todas as Equipes</h2>
+        <div class="flex items-center justify-between mb-4">
+          <div><h2 class="text-xl font-bold text-gray-900">Todas as Equipes</h2><p class="text-sm text-gray-500">Todos os colaboradores cadastrados</p></div>
+          <button onclick="openImportModal()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-green-700"><i data-lucide="upload" style="width:16px;height:16px"></i> Importar Planilha</button>
+        </div>
+        <!-- Gestores pendentes de acesso -->
+        <div id="pending-gestores-section" class="hidden mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <h3 class="font-semibold text-amber-800 mb-3 flex items-center gap-2"><i data-lucide="alert-triangle" style="width:16px;height:16px"></i> Gestores importados sem acesso ao sistema</h3>
+          <p class="text-sm text-amber-700 mb-3">Informe o e-mail e crie o login para cada gestor abaixo:</p>
+          <div id="pending-gestores-list" class="space-y-2"></div>
+        </div>
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table class="w-full text-sm"><thead class="bg-gray-50 border-b"><tr>
             <th class="text-left px-4 py-3 font-semibold text-gray-600">Colaborador</th>
@@ -176,6 +186,46 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <!-- Modal Importar Planilha -->
+  <div id="import-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+      <h2 class="font-bold text-lg mb-1">Importar Colaboradores</h2>
+      <p class="text-sm text-gray-500 mb-4">A planilha deve ter as colunas: <strong>Nome</strong>, <strong>Matrícula</strong>, <strong>Área</strong>, <strong>Gestor</strong>. A coluna <strong>Cargo</strong> é opcional.</p>
+
+      <div id="import-step1">
+        <label class="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-8 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
+          <i data-lucide="file-spreadsheet" style="width:36px;height:36px" class="text-gray-400 mb-2"></i>
+          <span class="text-sm font-medium text-gray-600">Clique para selecionar o arquivo</span>
+          <span class="text-xs text-gray-400 mt-1">.xlsx ou .csv</span>
+          <input id="import-file" type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleImportFile(this)">
+        </label>
+        <div id="import-file-name" class="hidden mt-2 text-sm text-indigo-700 font-medium text-center"></div>
+      </div>
+
+      <div id="import-step2" class="hidden">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-sm font-medium text-gray-700">Pré-visualização (<span id="import-count">0</span> colaboradores, <span id="import-gestores-count">0</span> gestores)</p>
+          <button onclick="document.getElementById('import-step2').classList.add('hidden'); document.getElementById('import-step1').classList.remove('hidden'); document.getElementById('import-file').value=''; document.getElementById('import-file-name').classList.add('hidden');" class="text-xs text-gray-500 hover:text-gray-700">← Trocar arquivo</button>
+        </div>
+        <div class="overflow-x-auto max-h-60 border rounded-lg mb-4">
+          <table class="w-full text-xs"><thead class="bg-gray-50 sticky top-0"><tr>
+            <th class="text-left px-3 py-2 font-semibold text-gray-600">Nome</th>
+            <th class="text-left px-3 py-2 font-semibold text-gray-600">Matrícula</th>
+            <th class="text-left px-3 py-2 font-semibold text-gray-600">Cargo</th>
+            <th class="text-left px-3 py-2 font-semibold text-gray-600">Área</th>
+            <th class="text-left px-3 py-2 font-semibold text-gray-600">Gestor</th>
+          </tr></thead><tbody id="import-preview"></tbody></table>
+        </div>
+        <div id="import-err" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3"></div>
+        <div id="import-ok"  class="hidden text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-3"></div>
+        <div class="flex gap-2">
+          <button onclick="runImport()" id="import-btn" class="flex-1 bg-green-600 text-white rounded-lg py-2 font-medium hover:bg-green-700">Importar</button>
+          <button onclick="closeImportModal()" class="flex-1 bg-gray-100 text-gray-700 rounded-lg py-2 font-medium">Cancelar</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Modal Novo Gestor -->
@@ -282,6 +332,157 @@
       const { data: g } = await sb.from('gestores').select('usuario_id').eq('id', id).single();
       if (g) await sb.from('usuarios').update({ ativo: !ativo }).eq('id', g.usuario_id);
       loadGestores();
+    };
+
+    // ── Importar Planilha ─────────────────────────────────────
+    let importRows = [];
+
+    window.openImportModal = () => {
+      document.getElementById('import-modal').classList.remove('hidden');
+      document.getElementById('import-step1').classList.remove('hidden');
+      document.getElementById('import-step2').classList.add('hidden');
+      document.getElementById('import-err').classList.add('hidden');
+      document.getElementById('import-ok').classList.add('hidden');
+      lucide.createIcons();
+    };
+
+    window.closeImportModal = () => document.getElementById('import-modal').classList.add('hidden');
+
+    window.handleImportFile = (input) => {
+      const file = input.files[0];
+      if (!file) return;
+      document.getElementById('import-file-name').textContent = file.name;
+      document.getElementById('import-file-name').classList.remove('hidden');
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        if (!raw.length) { alert('Planilha vazia.'); return; }
+
+        // normaliza cabeçalhos (aceita variações)
+        const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+        const findKey = (obj, candidates) => Object.keys(obj).find(k => candidates.includes(norm(k)));
+
+        importRows = raw.map(r => {
+          const kNome     = findKey(r, ['nome','name','colaborador']);
+          const kMat      = findKey(r, ['matricula','matrícula','mat','registration']);
+          const kArea     = findKey(r, ['area','área','setor','departamento','department']);
+          const kGestor   = findKey(r, ['gestor','lider','líder','manager','supervisor']);
+          const kCargo    = findKey(r, ['cargo','funcao','função','role','position']);
+          return {
+            nome:     String(r[kNome]||'').trim(),
+            matricula: String(r[kMat]||'').trim(),
+            area:     String(r[kArea]||'').trim(),
+            gestor:   String(r[kGestor]||'').trim(),
+            cargo:    String(r[kCargo]||'').trim(),
+          };
+        }).filter(r => r.nome);
+
+        const gestoresUnicos = [...new Set(importRows.map(r => r.gestor).filter(Boolean))];
+        document.getElementById('import-count').textContent = importRows.length;
+        document.getElementById('import-gestores-count').textContent = gestoresUnicos.length;
+        document.getElementById('import-preview').innerHTML = importRows.map(r =>
+          `<tr class="border-b"><td class="px-3 py-1.5">${r.nome}</td><td class="px-3 py-1.5 text-gray-500">${r.matricula}</td><td class="px-3 py-1.5 text-gray-500">${r.cargo}</td><td class="px-3 py-1.5 text-gray-500">${r.area}</td><td class="px-3 py-1.5 text-gray-500">${r.gestor}</td></tr>`
+        ).join('');
+        document.getElementById('import-step1').classList.add('hidden');
+        document.getElementById('import-step2').classList.remove('hidden');
+      };
+      reader.readAsArrayBuffer(file);
+    };
+
+    window.runImport = async () => {
+      const btn   = document.getElementById('import-btn');
+      const errEl = document.getElementById('import-err');
+      const okEl  = document.getElementById('import-ok');
+      errEl.classList.add('hidden'); okEl.classList.add('hidden');
+      btn.disabled = true; btn.textContent = 'Importando...';
+
+      try {
+        // 1. Busca gestores existentes
+        const { data: gestoresExist } = await sb.from('gestores').select('id,nome');
+        const gestorMap = {};
+        (gestoresExist||[]).forEach(g => { gestorMap[g.nome.toLowerCase()] = g.id; });
+
+        // 2. Cria gestores novos (sem usuario_id = pendente)
+        const gestoresNovos = [...new Set(importRows.map(r => r.gestor).filter(Boolean))]
+          .filter(nome => !gestorMap[nome.toLowerCase()]);
+
+        for (const nome of gestoresNovos) {
+          const area = importRows.find(r => r.gestor.toLowerCase()===nome.toLowerCase())?.area || '';
+          const { data: ng } = await sb.from('gestores').insert({ nome, area, ativo: false }).select('id,nome').single();
+          if (ng) gestorMap[ng.nome.toLowerCase()] = ng.id;
+        }
+
+        // 3. Upsert colaboradores — atualiza se matrícula já existe, insere se não
+        let ok = 0, erros = 0;
+        for (const r of importRows) {
+          const gestor_id = r.gestor ? gestorMap[r.gestor.toLowerCase()] : null;
+          const payload = { nome: r.nome, area: r.area, cargo: r.cargo||null, gestor_id };
+          let res;
+          if (r.matricula) {
+            const { data: exist } = await sb.from('colaboradores').select('id').eq('matricula', r.matricula).maybeSingle();
+            if (exist) {
+              res = await sb.from('colaboradores').update(payload).eq('id', exist.id);
+            } else {
+              res = await sb.from('colaboradores').insert({ ...payload, matricula: r.matricula });
+            }
+          } else {
+            res = await sb.from('colaboradores').insert(payload);
+          }
+          if (res.error) erros++; else ok++;
+        }
+
+        // 4. Mostra gestores pendentes de acesso
+        const { data: pendentes } = await sb.from('gestores').select('id,nome,area').eq('ativo', false).is('usuario_id', null);
+        if (pendentes?.length) {
+          document.getElementById('pending-gestores-list').innerHTML = pendentes.map(g => `
+            <div class="flex items-center gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2">
+              <span class="font-medium text-sm text-gray-800 w-40 shrink-0">${g.nome}</span>
+              <input type="email" placeholder="e-mail do gestor" id="pg-email-${g.id}"
+                class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <input type="password" placeholder="senha temp." id="pg-senha-${g.id}" minlength="8"
+                class="w-32 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <button onclick="criarAcessoGestor('${g.id}','${g.nome}','${g.area||''}')" id="pg-btn-${g.id}"
+                class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-indigo-700 whitespace-nowrap">Criar acesso</button>
+              <span id="pg-ok-${g.id}" class="hidden text-green-600 text-xs font-medium">✓ Criado</span>
+            </div>`).join('');
+          document.getElementById('pending-gestores-section').classList.remove('hidden');
+          lucide.createIcons();
+        }
+
+        okEl.textContent = `${ok} colaborador(es) importado(s) com sucesso.${erros ? ` ${erros} erro(s).` : ''}`;
+        okEl.classList.remove('hidden');
+        btn.textContent = 'Importar novamente';
+        btn.disabled = false;
+        loadColabs();
+        closeImportModal();
+      } catch(e) {
+        errEl.textContent = 'Erro: ' + e.message;
+        errEl.classList.remove('hidden');
+        btn.disabled = false; btn.textContent = 'Importar';
+      }
+    };
+
+    window.criarAcessoGestor = async (gestorId, nome, area) => {
+      const email = document.getElementById(`pg-email-${gestorId}`).value.trim();
+      const senha = document.getElementById(`pg-senha-${gestorId}`).value;
+      const btn   = document.getElementById(`pg-btn-${gestorId}`);
+      if (!email || !senha) { alert('Preencha e-mail e senha.'); return; }
+      btn.disabled = true; btn.textContent = 'Criando...';
+      const { error } = await sb.functions.invoke('create-gestor', { body: { email, password: senha, nome, area } });
+      if (error) { btn.disabled = false; btn.textContent = 'Criar acesso'; alert('Erro: ' + error.message); return; }
+      // Busca o gestor recém-criado (com usuario_id) pelo nome
+      const { data: novoGestor } = await sb.from('gestores').select('id').eq('nome', nome).not('usuario_id', 'is', null).maybeSingle();
+      if (novoGestor && novoGestor.id !== gestorId) {
+        // Transfere colaboradores do gestor pendente para o novo gestor
+        await sb.from('colaboradores').update({ gestor_id: novoGestor.id }).eq('gestor_id', gestorId);
+        // Remove o gestor pendente sem usuario_id
+        await sb.from('gestores').delete().eq('id', gestorId);
+      }
+      btn.style.display = 'none';
+      document.getElementById(`pg-ok-${gestorId}`).classList.remove('hidden');
+      loadGestores(); loadColabs();
     };
 
     window.openGestorModal  = () => document.getElementById('gestor-modal').classList.remove('hidden');
