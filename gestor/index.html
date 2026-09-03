@@ -108,8 +108,8 @@
                 <th class="text-left px-4 py-3 font-semibold text-gray-600">Área</th>
                 <th class="text-center px-4 py-3 font-semibold text-gray-600">Relacionamento</th>
                 <th class="text-center px-4 py-3 font-semibold text-gray-600">Potencial</th>
-                <th class="text-center px-4 py-3 font-semibold text-gray-600">Avaliação</th>
                 <th class="text-center px-4 py-3 font-semibold text-gray-600">Metas</th>
+                <th class="text-center px-4 py-3 font-semibold text-gray-600">Avaliação</th>
                 <th class="text-center px-4 py-3 font-semibold text-gray-600">Status</th>
                 <th class="text-center px-4 py-3 font-semibold text-gray-600">Ações</th>
               </tr>
@@ -425,7 +425,7 @@
       const ev = parseFloat(document.getElementById('f-eval').value);
 
       if (ci < 1 || ci > 10 || ev < 1 || ev > 10) {
-        errEl.textContent = 'Relacionamento e Avaliação devem ser entre 1 e 10.';
+        errEl.textContent = 'Relacionamento e Potencial devem ser entre 1 e 10.';
         errEl.classList.remove('hidden');
         return;
       }
@@ -520,7 +520,7 @@
     // ── Monta texto do relatório de um colaborador ────────────
     async function buildRelatorioText(rec) {
       const { data: fbs } = await sb.from('feedbacks').select('*').eq('colaborador_id', rec.__backendId).order('data', { ascending: false });
-      const pot = calcPotencial(rec.checkin_score, rec.evaluation_score);
+      const pot = calcPotencial(rec.checkin_score, rec.evaluation_score, rec.goal_progress);
       const status = getStatus(pot);
       const linha = '='.repeat(50);
       let txt = `RELATÓRIO DE DESEMPENHO\n${linha}\n\n`;
