@@ -236,31 +236,6 @@
           </table>
         </div>
 
-        <!-- Feed cronológico -->
-        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div class="px-4 py-3 border-b flex items-center gap-3">
-            <span class="font-semibold text-sm text-gray-700 mr-auto">Feedbacks Recentes</span>
-            <select id="fb-filter-gestor" onchange="filterFeedbacks()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
-              <option value="">Todos os gestores</option>
-            </select>
-            <select id="fb-filter-tipo" onchange="filterFeedbacks()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
-              <option value="">Todos os tipos</option>
-              <option value="positivo">👍 Positivo</option>
-              <option value="construtivo">💡 Construtivo</option>
-              <option value="urgente">⚡ Urgente</option>
-            </select>
-          </div>
-          <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b"><tr>
-              <th class="text-left px-4 py-3 font-semibold text-gray-600">Colaborador</th>
-              <th class="text-left px-4 py-3 font-semibold text-gray-600">Gestor</th>
-              <th class="text-center px-4 py-3 font-semibold text-gray-600">Tipo</th>
-              <th class="text-left px-4 py-3 font-semibold text-gray-600">Descrição</th>
-              <th class="text-center px-4 py-3 font-semibold text-gray-600">Data</th>
-            </tr></thead>
-            <tbody id="fb-table"></tbody>
-          </table>
-        </div>
       </div>
 
       <!-- Configurações -->
