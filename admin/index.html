@@ -531,23 +531,39 @@
           if (ng) gestorMap[ng.nome.toLowerCase()] = ng.id;
         }
 
-        // 3. Upsert colaboradores — atualiza se matrícula já existe, insere se não
-        let ok = 0, erros = 0;
+        // 3. Upsert colaboradores — prioridade: matrícula → nome → insere novo
+        let ok = 0, atualizados = 0, erros = 0;
         for (const r of importRows) {
           const gestor_id = r.gestor ? gestorMap[r.gestor.toLowerCase()] : null;
           const payload = { nome: r.nome, area: r.area, cargo: r.cargo||null, gestor_id };
-          let res;
+          let existId = null;
+
+          // 1º tenta achar pela matrícula
           if (r.matricula) {
-            const { data: exist } = await sb.from('colaboradores').select('id').eq('matricula', r.matricula).maybeSingle();
-            if (exist) {
-              res = await sb.from('colaboradores').update(payload).eq('id', exist.id);
-            } else {
-              res = await sb.from('colaboradores').insert({ ...payload, matricula: r.matricula });
-            }
-          } else {
-            res = await sb.from('colaboradores').insert(payload);
+            const { data: byMat } = await sb.from('colaboradores').select('id').eq('matricula', r.matricula).maybeSingle();
+            if (byMat) existId = byMat.id;
           }
-          if (res.error) erros++; else ok++;
+
+          // 2º se não achou pela matrícula, tenta pelo nome (case-insensitive)
+          if (!existId) {
+            const { data: byNome } = await sb.from('colaboradores').select('id')
+              .ilike('nome', r.nome.trim()).maybeSingle();
+            if (byNome) existId = byNome.id;
+          }
+
+          let res;
+          if (existId) {
+            // Atualiza — inclui matrícula se veio na planilha
+            const upd = r.matricula ? { ...payload, matricula: r.matricula } : payload;
+            res = await sb.from('colaboradores').update(upd).eq('id', existId);
+            if (!res.error) atualizados++;
+          } else {
+            // Insere novo
+            const ins = r.matricula ? { ...payload, matricula: r.matricula } : payload;
+            res = await sb.from('colaboradores').insert(ins);
+            if (!res.error) ok++;
+          }
+          if (res.error) erros++;
         }
 
         // 4. Mostra gestores pendentes de acesso
@@ -568,7 +584,7 @@
           lucide.createIcons();
         }
 
-        okEl.textContent = `${ok} colaborador(es) importado(s) com sucesso.${erros ? ` ${erros} erro(s).` : ''}`;
+        okEl.textContent = `${ok} novo(s) inserido(s), ${atualizados} atualizado(s).${erros ? ` ${erros} erro(s).` : ''}`;
         okEl.classList.remove('hidden');
         btn.textContent = 'Importar novamente';
         btn.disabled = false;
