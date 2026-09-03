@@ -78,7 +78,20 @@
           <div class="bg-white rounded-xl p-4 border border-gray-100"><p class="text-sm text-gray-500">PDIs Ativos</p><p id="dash-pdis" class="text-2xl font-bold text-gray-900 mt-1">–</p></div>
         </div>
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div class="px-4 py-3 border-b font-semibold text-sm text-gray-700">Todos os Colaboradores</div>
+          <div class="px-4 py-3 border-b flex flex-wrap items-center gap-2">
+            <span class="font-semibold text-sm text-gray-700 mr-auto">Todos os Colaboradores</span>
+            <input id="dash-search" type="text" placeholder="Buscar nome, gestor ou área..." oninput="filterDash()"
+              class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 w-56">
+            <select id="dash-filter-status" onchange="filterDash()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              <option value="">Todos os status</option>
+              <option value="verde">🟢 Destaque</option>
+              <option value="amarelo">🟡 Desenvolvimento</option>
+              <option value="vermelho">🔴 Risco</option>
+            </select>
+            <select id="dash-filter-area" onchange="filterDash()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              <option value="">Todas as áreas</option>
+            </select>
+          </div>
           <table class="w-full text-sm"><thead class="bg-gray-50"><tr>
             <th class="text-left px-4 py-3 font-semibold text-gray-600">Colaborador</th>
             <th class="text-left px-4 py-3 font-semibold text-gray-600">Gestor</th>
@@ -86,6 +99,7 @@
             <th class="text-center px-4 py-3 font-semibold text-gray-600">Avaliação</th>
             <th class="text-center px-4 py-3 font-semibold text-gray-600">Status</th>
           </tr></thead><tbody id="dash-table"></tbody></table>
+          <div id="dash-empty" class="hidden text-center py-8 text-gray-400 text-sm">Nenhum resultado encontrado.</div>
         </div>
       </div>
 
@@ -120,6 +134,22 @@
           <div id="pending-gestores-list" class="space-y-2"></div>
         </div>
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div class="px-4 py-3 border-b flex flex-wrap items-center gap-2">
+            <input id="colabs-search" type="text" placeholder="Buscar colaborador, cargo ou área..." oninput="filterColabs()"
+              class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 flex-1 min-w-48">
+            <select id="colabs-filter-gestor" onchange="filterColabs()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              <option value="">Todos os gestores</option>
+            </select>
+            <select id="colabs-filter-area" onchange="filterColabs()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              <option value="">Todas as áreas</option>
+            </select>
+            <select id="colabs-filter-status" onchange="filterColabs()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              <option value="">Todos os status</option>
+              <option value="verde">🟢 Destaque</option>
+              <option value="amarelo">🟡 Desenvolvimento</option>
+              <option value="vermelho">🔴 Risco</option>
+            </select>
+          </div>
           <table class="w-full text-sm"><thead class="bg-gray-50 border-b"><tr>
             <th class="text-left px-4 py-3 font-semibold text-gray-600">Colaborador</th>
             <th class="text-left px-4 py-3 font-semibold text-gray-600">Cargo</th>
@@ -128,6 +158,7 @@
             <th class="text-center px-4 py-3 font-semibold text-gray-600">Avaliação</th>
             <th class="text-center px-4 py-3 font-semibold text-gray-600">Status</th>
           </tr></thead><tbody id="colabs-table"></tbody></table>
+          <div id="colabs-empty" class="hidden text-center py-8 text-gray-400 text-sm">Nenhum resultado encontrado.</div>
         </div>
       </div>
 
@@ -290,6 +321,35 @@
     const statusLabel2 = (s) => s==='verde'?'🟢 Destaque':s==='amarelo'?'🟡 Desenvolvimento':'🔴 Risco';
 
     // ── Dashboard ─────────────────────────────────────────────
+    let dashData = [];
+
+    function renderDashTable(rows) {
+      const empty = document.getElementById('dash-empty');
+      if (!rows.length) {
+        document.getElementById('dash-table').innerHTML = '';
+        empty.classList.remove('hidden'); return;
+      }
+      empty.classList.add('hidden');
+      document.getElementById('dash-table').innerHTML = rows.map(c => {
+        const media = calcMedia2(c); const s = getStatus2(media);
+        return `<tr class="border-b hover:bg-gray-50"><td class="px-4 py-3"><div class="font-medium">${c.nome}</div><div class="text-xs text-gray-400">${c.cargo||''}</div></td><td class="px-4 py-3 text-gray-600">${c.gestores?.nome||'–'}</td><td class="px-4 py-3 text-gray-600">${c.area||c.gestores?.area||'–'}</td><td class="px-4 py-3 text-center font-bold">${media.toFixed(1)}/10</td><td class="px-4 py-3 text-center"><span class="status-${s} px-2 py-1 rounded-full text-xs font-semibold">${statusLabel2(s)}</span></td></tr>`;
+      }).join('');
+    }
+
+    window.filterDash = () => {
+      const q     = document.getElementById('dash-search').value.toLowerCase();
+      const fSt   = document.getElementById('dash-filter-status').value;
+      const fAr   = document.getElementById('dash-filter-area').value;
+      const rows  = dashData.filter(c => {
+        const area = (c.area||c.gestores?.area||'').toLowerCase();
+        const matchQ  = !q || c.nome.toLowerCase().includes(q) || (c.gestores?.nome||'').toLowerCase().includes(q) || area.includes(q);
+        const matchSt = !fSt || getStatus2(calcMedia2(c)) === fSt;
+        const matchAr = !fAr || (c.area||c.gestores?.area||'') === fAr;
+        return matchQ && matchSt && matchAr;
+      });
+      renderDashTable(rows);
+    };
+
     async function loadDashboard() {
       const [{ data: colabs }, { data: gestores }, { data: avaliacoes }, { data: pdis }] = await Promise.all([
         sb.from('colaboradores').select('*, gestores(nome,area)'),
@@ -297,19 +357,25 @@
         sb.from('avaliacoes').select('id'),
         sb.from('pdi').select('id').eq('status','em_andamento'),
       ]);
+      dashData = colabs || [];
       const counts = { verde:0, amarelo:0, vermelho:0 };
-      (colabs||[]).forEach(c => { counts[getStatus2(calcMedia2(c))]++; });
-      document.getElementById('dash-total').textContent     = colabs?.length||0;
-      document.getElementById('dash-verde').textContent     = counts.verde;
-      document.getElementById('dash-amarelo').textContent   = counts.amarelo;
-      document.getElementById('dash-vermelho').textContent  = counts.vermelho;
-      document.getElementById('dash-gestores').textContent  = gestores?.length||0;
-      document.getElementById('dash-avaliacoes').textContent= avaliacoes?.length||0;
-      document.getElementById('dash-pdis').textContent      = pdis?.length||0;
-      document.getElementById('dash-table').innerHTML = (colabs||[]).map(c => {
-        const media = calcMedia2(c); const s = getStatus2(media);
-        return `<tr class="border-b hover:bg-gray-50"><td class="px-4 py-3"><div class="font-medium">${c.nome}</div><div class="text-xs text-gray-400">${c.cargo}</div></td><td class="px-4 py-3 text-gray-600">${c.gestores?.nome||'–'}</td><td class="px-4 py-3 text-gray-600">${c.area||c.gestores?.area||'–'}</td><td class="px-4 py-3 text-center font-bold">${media.toFixed(1)}/10</td><td class="px-4 py-3 text-center"><span class="status-${s} px-2 py-1 rounded-full text-xs font-semibold">${statusLabel2(s)}</span></td></tr>`;
-      }).join('') || '<tr><td colspan="5" class="text-center py-8 text-gray-400">Nenhum colaborador cadastrado.</td></tr>';
+      dashData.forEach(c => { counts[getStatus2(calcMedia2(c))]++; });
+      document.getElementById('dash-total').textContent      = dashData.length;
+      document.getElementById('dash-verde').textContent      = counts.verde;
+      document.getElementById('dash-amarelo').textContent    = counts.amarelo;
+      document.getElementById('dash-vermelho').textContent   = counts.vermelho;
+      document.getElementById('dash-gestores').textContent   = gestores?.length||0;
+      document.getElementById('dash-avaliacoes').textContent = avaliacoes?.length||0;
+      document.getElementById('dash-pdis').textContent       = pdis?.length||0;
+      // Popula filtro de área
+      const areas = [...new Set(dashData.map(c => c.area||c.gestores?.area||'').filter(Boolean))].sort();
+      const selAr = document.getElementById('dash-filter-area');
+      selAr.innerHTML = '<option value="">Todas as áreas</option>' + areas.map(a=>`<option value="${a}">${a}</option>`).join('');
+      // Reseta filtros e renderiza
+      document.getElementById('dash-search').value = '';
+      document.getElementById('dash-filter-status').value = '';
+      selAr.value = '';
+      renderDashTable(dashData);
     }
 
     // ── Gestores ──────────────────────────────────────────────
@@ -517,13 +583,53 @@
     });
 
     // ── Equipes ───────────────────────────────────────────────
+    let colabsData = [];
+
+    function renderColabsTable(rows) {
+      const empty = document.getElementById('colabs-empty');
+      if (!rows.length) {
+        document.getElementById('colabs-table').innerHTML = '';
+        empty.classList.remove('hidden'); return;
+      }
+      empty.classList.add('hidden');
+      document.getElementById('colabs-table').innerHTML = rows.map(c => {
+        const media = calcMedia2(c); const s = getStatus2(media);
+        const label = statusLabel2(s);
+        return `<tr class="border-b hover:bg-gray-50"><td class="px-4 py-3 font-medium">${c.nome}</td><td class="px-4 py-3 text-gray-500">${c.cargo||'–'}</td><td class="px-4 py-3 text-gray-500">${c.area||'–'}</td><td class="px-4 py-3 text-gray-500">${c.gestores?.nome||'–'}</td><td class="px-4 py-3 text-center font-bold">${media.toFixed(1)}/10</td><td class="px-4 py-3 text-center"><span class="status-${s} px-2 py-1 rounded-full text-xs font-semibold">${label}</span></td></tr>`;
+      }).join('');
+    }
+
+    window.filterColabs = () => {
+      const q    = document.getElementById('colabs-search').value.toLowerCase();
+      const fGt  = document.getElementById('colabs-filter-gestor').value;
+      const fAr  = document.getElementById('colabs-filter-area').value;
+      const fSt  = document.getElementById('colabs-filter-status').value;
+      const rows = colabsData.filter(c => {
+        const matchQ  = !q || c.nome.toLowerCase().includes(q) || (c.cargo||'').toLowerCase().includes(q) || (c.area||'').toLowerCase().includes(q);
+        const matchGt = !fGt || (c.gestores?.nome||'') === fGt;
+        const matchAr = !fAr || (c.area||'') === fAr;
+        const matchSt = !fSt || getStatus2(calcMedia2(c)) === fSt;
+        return matchQ && matchGt && matchAr && matchSt;
+      });
+      renderColabsTable(rows);
+    };
+
     async function loadColabs() {
       const { data } = await sb.from('colaboradores').select('*, gestores(nome)').order('nome');
-      document.getElementById('colabs-table').innerHTML = (data||[]).map(c => {
-        const media = calcMedia2(c); const s = getStatus2(media);
-        const label = s==='verde'?'🟢 Destaque':s==='amarelo'?'🟡 Desenvolvimento':'🔴 Risco';
-        return `<tr class="border-b hover:bg-gray-50"><td class="px-4 py-3 font-medium">${c.nome}</td><td class="px-4 py-3 text-gray-500">${c.cargo}</td><td class="px-4 py-3 text-gray-500">${c.area||'–'}</td><td class="px-4 py-3 text-gray-500">${c.gestores?.nome||'–'}</td><td class="px-4 py-3 text-center font-bold">${media.toFixed(1)}/10</td><td class="px-4 py-3 text-center"><span class="status-${s} px-2 py-1 rounded-full text-xs font-semibold">${label}</span></td></tr>`;
-      }).join('') || '<tr><td colspan="6" class="text-center py-8 text-gray-400">Nenhum colaborador.</td></tr>';
+      colabsData = data || [];
+      // Popula filtros
+      const gestores = [...new Set(colabsData.map(c => c.gestores?.nome||'').filter(Boolean))].sort();
+      const areas    = [...new Set(colabsData.map(c => c.area||'').filter(Boolean))].sort();
+      document.getElementById('colabs-filter-gestor').innerHTML =
+        '<option value="">Todos os gestores</option>' + gestores.map(g=>`<option value="${g}">${g}</option>`).join('');
+      document.getElementById('colabs-filter-area').innerHTML =
+        '<option value="">Todas as áreas</option>' + areas.map(a=>`<option value="${a}">${a}</option>`).join('');
+      // Reseta filtros e renderiza
+      document.getElementById('colabs-search').value = '';
+      document.getElementById('colabs-filter-gestor').value = '';
+      document.getElementById('colabs-filter-area').value = '';
+      document.getElementById('colabs-filter-status').value = '';
+      renderColabsTable(colabsData);
     }
 
     async function loadAvaliacoes() {
