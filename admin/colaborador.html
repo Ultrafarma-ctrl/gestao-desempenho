@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatório do Colaborador</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'DM Sans', sans-serif; background: #f9fafb; }
+    .status-verde    { background:#dcfce7; color:#15803d; }
+    .status-amarelo  { background:#fef9c3; color:#a16207; }
+    .status-vermelho { background:#fee2e2; color:#b91c1c; }
+    .bar { height: 8px; border-radius: 99px; background: #e5e7eb; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 99px; transition: width .6s ease; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white; }
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Topo -->
+  <div class="bg-white border-b px-6 py-4 flex items-center gap-4 no-print sticky top-0 z-10">
+    <a href="/admin/index.html" class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 transition-colors">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      Voltar ao Dashboard
+    </a>
+    <span class="text-gray-300">|</span>
+    <span id="top-nome" class="text-sm font-medium text-gray-700"></span>
+    <button onclick="window.print()" class="ml-auto flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Imprimir / PDF
+    </button>
+  </div>
+
+  <div id="loading" class="flex items-center justify-center min-h-[60vh]">
+    <div class="text-center text-gray-400">
+      <svg class="animate-spin w-8 h-8 mx-auto mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      Carregando relatório...
+    </div>
+  </div>
+
+  <div id="conteudo" class="hidden max-w-3xl mx-auto px-4 py-8 space-y-6">
+
+    <!-- Cabeçalho do colaborador -->
+    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+      <div class="flex items-start gap-4">
+        <div id="avatar" class="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-2xl font-bold shrink-0"></div>
+        <div class="flex-1">
+          <h1 id="c-nome" class="text-2xl font-bold text-gray-900"></h1>
+          <p id="c-cargo" class="text-gray-500 mt-0.5"></p>
+          <div class="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-sm text-gray-500">
+            <span id="c-matricula"></span>
+            <span id="c-area"></span>
+            <span id="c-gestor"></span>
+          </div>
+        </div>
+        <span id="c-status-badge" class="px-3 py-1.5 rounded-full text-sm font-semibold shrink-0 mt-1"></span>
+      </div>
+    </div>
+
+    <!-- Scores -->
+    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-5">Avaliação de Desempenho</h2>
+      <div class="space-y-4">
+        <div>
+          <div class="flex justify-between text-sm mb-1"><span class="font-medium text-gray-700">Relacionamento</span><span id="s-rel" class="font-bold text-gray-900"></span></div>
+          <div class="bar"><div id="b-rel" class="bar-fill bg-indigo-400" style="width:0%"></div></div>
+        </div>
+        <div>
+          <div class="flex justify-between text-sm mb-1"><span class="font-medium text-gray-700">Potencial</span><span id="s-pot" class="font-bold text-gray-900"></span></div>
+          <div class="bar"><div id="b-pot" class="bar-fill bg-indigo-400" style="width:0%"></div></div>
+        </div>
+        <div>
+          <div class="flex justify-between text-sm mb-1"><span class="font-medium text-gray-700">Avaliação</span><span id="s-aval" class="font-bold text-gray-900"></span></div>
+          <div class="bar"><div id="b-aval" class="bar-fill bg-indigo-400" style="width:0%"></div></div>
+        </div>
+        <div>
+          <div class="flex justify-between text-sm mb-1"><span class="font-medium text-gray-700">Metas</span><span id="s-meta" class="font-bold text-gray-900"></span></div>
+          <div class="bar"><div id="b-meta" class="bar-fill bg-indigo-400" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="mt-6 pt-5 border-t flex items-center justify-between">
+        <div>
+          <p class="text-xs text-gray-500 mb-0.5">Média Geral</p>
+          <p id="s-media" class="text-3xl font-bold text-gray-900"></p>
+        </div>
+        <div class="text-right">
+          <p class="text-xs text-gray-500 mb-1">Status</p>
+          <span id="s-status" class="px-4 py-2 rounded-full text-sm font-semibold"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feedbacks -->
+    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Feedbacks Recebidos</h2>
+      <div id="fb-lista" class="space-y-3"></div>
+    </div>
+
+    <!-- PDIs -->
+    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Plano de Desenvolvimento Individual (PDI)</h2>
+      <div id="pdi-lista" class="space-y-3"></div>
+    </div>
+
+    <!-- Rodapé do relatório -->
+    <p class="text-center text-xs text-gray-400 pb-4">Relatório gerado em <span id="data-geracao"></span> · Gestão de Desempenho Ultrafarma</p>
+  </div>
+
+  <script>
+    const SUPABASE_URL      = 'https://uafenvoiyltoziiechxg.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhZmVudm9peWx0b3ppaWVjaHhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyODI2MzEsImV4cCI6MjA5Nzg1ODYzMX0.JfHu-8wZjpfnbXRbTFNWUyydN0fyxINBTbU5lGtBZTM';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const calcMedia = (c) => ((c.checkin_score||0) + (c.evaluation_score||0) + (c.avaliacao_score||0) + ((c.goal_progress||0)/10)) / 4;
+    const getStatus = (m) => m >= 8 ? 'verde' : m >= 5 ? 'amarelo' : 'vermelho';
+    const labelStatus = (s) => s==='verde' ? '🟢 Destaque' : s==='amarelo' ? '🟡 Desenvolvimento' : '🔴 Risco';
+
+    function setBar(idSpan, idBar, val, max) {
+      document.getElementById(idSpan).textContent = val + (max===100?'%':'/10');
+      document.getElementById(idBar).style.width  = Math.min(100, (val/max)*100) + '%';
+    }
+
+    async function init() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.replace('/login.html'); return; }
+      const { data: u } = await sb.from('usuarios').select('perfil,ativo').eq('id', session.user.id).single();
+      if (!u?.ativo || u.perfil !== 'admin') { window.location.replace('/login.html'); return; }
+
+      const id = new URLSearchParams(window.location.search).get('id');
+      if (!id) { window.location.replace('/admin/index.html'); return; }
+
+      const [{ data: c }, { data: fbs }, { data: pdis }] = await Promise.all([
+        sb.from('colaboradores').select('*, gestores(nome)').eq('id', id).single(),
+        sb.from('feedbacks').select('*').eq('colaborador_id', id).order('data', { ascending: false }),
+        sb.from('pdi').select('*').eq('colaborador_id', id).order('prazo'),
+      ]);
+
+      if (!c) { window.location.replace('/admin/index.html'); return; }
+
+      const media = calcMedia(c);
+      const st    = getStatus(media);
+
+      // Header
+      document.getElementById('top-nome').textContent = c.nome;
+      document.getElementById('avatar').textContent   = c.nome.charAt(0).toUpperCase();
+      document.getElementById('c-nome').textContent   = c.nome;
+      document.getElementById('c-cargo').textContent  = c.cargo || '';
+      document.getElementById('c-matricula').textContent = c.matricula ? '🪪 ' + c.matricula : '';
+      document.getElementById('c-area').textContent   = c.area ? '📍 ' + c.area : '';
+      document.getElementById('c-gestor').textContent = c.gestores?.nome ? '👤 Gestor: ' + c.gestores.nome : '';
+      const badge = document.getElementById('c-status-badge');
+      badge.textContent = labelStatus(st);
+      badge.className   = `status-${st} px-3 py-1.5 rounded-full text-sm font-semibold shrink-0 mt-1`;
+
+      // Scores
+      setBar('s-rel',  'b-rel',  c.checkin_score||0,    10);
+      setBar('s-pot',  'b-pot',  c.evaluation_score||0, 10);
+      setBar('s-aval', 'b-aval', c.avaliacao_score||0,  10);
+      setBar('s-meta', 'b-meta', c.goal_progress||0,    100);
+      document.getElementById('s-media').textContent = media.toFixed(1) + '/10';
+      const sEl = document.getElementById('s-status');
+      sEl.textContent = labelStatus(st);
+      sEl.className   = `status-${st} px-4 py-2 rounded-full text-sm font-semibold`;
+
+      // Feedbacks
+      const iconFb = t => t==='positivo'?'👍':t==='construtivo'?'💡':'⚡';
+      document.getElementById('fb-lista').innerHTML = (fbs||[]).length
+        ? (fbs||[]).map(f => `
+          <div class="border border-gray-100 rounded-xl px-4 py-3">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="text-base">${iconFb(f.tipo)}</span>
+              <span class="text-xs font-semibold text-gray-600 capitalize">${f.tipo}</span>
+              <span class="ml-auto text-xs text-gray-400">${new Date(f.data).toLocaleDateString('pt-BR')}</span>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${f.descricao}</p>
+          </div>`).join('')
+        : '<p class="text-sm text-gray-400">Nenhum feedback registrado.</p>';
+
+      // PDIs
+      const corPdi = st => st==='concluido'?'bg-green-100 text-green-700':st==='em_andamento'?'bg-blue-100 text-blue-700':'bg-gray-100 text-gray-500';
+      document.getElementById('pdi-lista').innerHTML = (pdis||[]).length
+        ? (pdis||[]).map(p => `
+          <div class="border border-gray-100 rounded-xl px-4 py-3">
+            <div class="flex items-start justify-between gap-2 mb-1">
+              <p class="font-medium text-sm text-gray-800">${p.objetivo}</p>
+              <span class="text-xs ${corPdi(p.status)} px-2 py-0.5 rounded-full font-medium whitespace-nowrap">${(p.status||'').replace('_',' ')}</span>
+            </div>
+            ${p.acao ? `<p class="text-xs text-gray-500 mt-1">${p.acao}</p>` : ''}
+            ${p.prazo ? `<p class="text-xs text-gray-400 mt-1">Prazo: ${new Date(p.prazo).toLocaleDateString('pt-BR')}</p>` : ''}
+          </div>`).join('')
+        : '<p class="text-sm text-gray-400">Nenhum PDI registrado.</p>';
+
+      document.getElementById('data-geracao').textContent = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+      document.getElementById('loading').style.display  = 'none';
+      document.getElementById('conteudo').classList.remove('hidden');
+      document.title = 'Relatório — ' + c.nome;
+    }
+
+    init();
+  </script>
+</body>
+</html>
