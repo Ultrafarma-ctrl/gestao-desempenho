@@ -118,7 +118,7 @@
       const email = document.getElementById('recovery-email').value.trim();
       const msgEl = document.getElementById('recovery-msg');
       const { error } = await sb.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/login.html`,
+        redirectTo: `${window.location.origin}/update-password.html`,
       });
       if (error) {
         msgEl.className = 'text-sm rounded-lg px-3 py-2 bg-red-50 text-red-600 border border-red-200';
