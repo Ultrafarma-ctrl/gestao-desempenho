@@ -534,15 +534,16 @@
         if (!raw.length) { alert('Planilha vazia.'); return; }
 
         // normaliza cabeçalhos (aceita variações)
-        const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
-        const findKey = (obj, candidates) => Object.keys(obj).find(k => candidates.includes(norm(k)));
+        const norm = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
+        const findKey = (obj, candidates) => Object.keys(obj).find(k => candidates.some(c => norm(k) === c || norm(k).includes(c)));
 
+        console.log('Colunas detectadas na planilha:', Object.keys(raw[0]));
         importRows = raw.map(r => {
-          const kNome     = findKey(r, ['nome','name','colaborador']);
-          const kMat      = findKey(r, ['matricula','matrícula','mat','registration']);
-          const kArea     = findKey(r, ['area','área','setor','departamento','department']);
-          const kGestor   = findKey(r, ['gestor','lider','líder','manager','supervisor']);
-          const kCargo    = findKey(r, ['cargo','funcao','função','role','position']);
+          const kNome     = findKey(r, ['nome','name','colaborador','funcionario','funcionário']);
+          const kMat      = findKey(r, ['matricula','matrícula','mat','registration','cod','codigo','código']);
+          const kArea     = findKey(r, ['area','área','setor','departamento','department','secao','seção']);
+          const kGestor   = findKey(r, ['gestor','lider','líder','manager','supervisor','responsavel','responsável']);
+          const kCargo    = findKey(r, ['cargo','funcao','função','role','position','ocupacao','ocupação']);
           return {
             nome:     String(r[kNome]||'').trim(),
             matricula: String(r[kMat]||'').trim(),
