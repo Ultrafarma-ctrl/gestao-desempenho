@@ -383,13 +383,17 @@
         </div>
 
         <!-- Seção quando já tem conta -->
-        <div id="eg-tem-conta-section" class="hidden border-t pt-3 mt-3">
+        <div id="eg-tem-conta-section" class="hidden border-t pt-3 mt-3 space-y-3">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-xs text-gray-500 mb-0.5">E-mail</p>
               <p id="eg-email-atual" class="text-sm font-medium text-gray-800"></p>
             </div>
             <button onclick="resetSenhaGestor()" class="text-xs text-indigo-600 hover:underline font-medium">Enviar link de redefinição</button>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nova senha (opcional)</label>
+            <input id="eg-nova-senha" type="password" minlength="8" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Deixe vazio para não alterar">
           </div>
         </div>
 
@@ -560,6 +564,8 @@
       document.getElementById('eg-btn').disabled = false;
       document.getElementById('eg-btn').textContent = 'Salvar';
 
+      document.getElementById('eg-nova-senha').value = '';
+
       if (temConta) {
         document.getElementById('eg-criar-conta-section').classList.add('hidden');
         document.getElementById('eg-tem-conta-section').classList.remove('hidden');
@@ -612,6 +618,34 @@
           if (!res.ok) {
             errEl.textContent = json.error || 'Erro ao criar conta.';
             errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'Salvar'; return;
+          }
+        }
+      }
+
+      // Se tem conta e nova senha preenchida, troca a senha via edge function
+      const temContaSection = document.getElementById('eg-tem-conta-section');
+      if (!temContaSection.classList.contains('hidden')) {
+        const novaSenha = document.getElementById('eg-nova-senha').value;
+        if (novaSenha) {
+          if (novaSenha.length < 8) {
+            errEl.textContent = 'Nova senha deve ter ao menos 8 caracteres.';
+            errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'Salvar'; return;
+          }
+          btn.textContent = 'Trocando senha...';
+          // Busca usuario_id do gestor
+          const { data: g } = await sb.from('gestores').select('usuario_id').eq('id', id).single();
+          if (g?.usuario_id) {
+            const { data: { session } } = await sb.auth.getSession();
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/update-user-password`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+              body: JSON.stringify({ user_id: g.usuario_id, new_password: novaSenha }),
+            });
+            const json = await res.json();
+            if (!res.ok) {
+              errEl.textContent = json.error || 'Erro ao trocar senha.';
+              errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'Salvar'; return;
+            }
           }
         }
       }
