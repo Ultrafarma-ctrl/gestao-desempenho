@@ -639,22 +639,28 @@
         : '';
       if (!confirm(`${aviso}Excluir o gestor "${nome}"? Esta ação não pode ser desfeita.`)) return;
 
-      // Busca usuario_id antes de deletar
-      const { data: g } = await sb.from('gestores').select('usuario_id').eq('id', id).single();
+      try {
+        // Busca usuario_id antes de deletar
+        const { data: g } = await sb.from('gestores').select('usuario_id').eq('id', id).single();
 
-      // Desvincula colaboradores
-      await sb.from('colaboradores').update({ gestor_id: null }).eq('gestor_id', id);
+        // Desvincula colaboradores
+        const r1 = await sb.from('colaboradores').update({ gestor_id: null }).eq('gestor_id', id);
+        if (r1.error) throw new Error('Erro ao desvincular colaboradores: ' + r1.error.message);
 
-      // Remove gestor da tabela gestores
-      await sb.from('gestores').delete().eq('id', id);
+        // Remove gestor da tabela gestores
+        const r2 = await sb.from('gestores').delete().eq('id', id);
+        if (r2.error) throw new Error('Erro ao excluir gestor: ' + r2.error.message);
 
-      // Remove usuário do auth e da tabela usuarios (se existir)
-      if (g?.usuario_id) {
-        await sb.from('usuarios').delete().eq('id', g.usuario_id);
-        await sb.functions.invoke('delete-user', { body: { user_id: g.usuario_id } }).catch(()=>{});
+        // Remove usuário do auth e da tabela usuarios (se existir)
+        if (g?.usuario_id) {
+          await sb.from('usuarios').delete().eq('id', g.usuario_id);
+          await sb.functions.invoke('delete-user', { body: { user_id: g.usuario_id } }).catch(()=>{});
+        }
+
+        loadGestores();
+      } catch (err) {
+        alert('Falha ao excluir: ' + err.message);
       }
-
-      loadGestores();
     };
 
     // ── Importar Planilha ─────────────────────────────────────
